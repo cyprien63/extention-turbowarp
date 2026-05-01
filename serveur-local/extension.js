@@ -1,4 +1,4 @@
-﻿(function(Scratch) {
+(function(Scratch) {
   'use strict';
 
   const PEERJS_URL = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js';
@@ -37,6 +37,7 @@
       this.playerList = [];
       this.maxPlayers = 0; 
       this.lastError = 'Aucune';
+      this.lastServerID = '';
       
       this._receivedThisTick = false;
       this._playerConnectedThisTick = false;
@@ -263,14 +264,26 @@
               ]
             }
           });
-          this.peer.on('open', (pid) => { this.isConnected = true; this.lastError = 'Aucune'; resolve(pid); });
+          this.peer.on('open', (pid) => { 
+            this.isConnected = true; 
+            this.lastError = 'Aucune'; 
+            resolve(pid); 
+          });
           this.peer.on('connection', (conn) => this._setupConnection(conn));
           this.peer.on('error', (err) => { 
-            this.isConnected = false; this.isServer = false; this.lastError = err.type;
+            this.isConnected = false; 
+            this.isServer = false; 
+            const errorMessages = {
+              'unavailable-id': 'ID déjà pris',
+              'invalid-id': 'ID invalide',
+              'network': 'Erreur réseau',
+              'server-error': 'Erreur serveur'
+            };
+            this.lastError = errorMessages[err.type] || err.type;
             reject(err); 
           });
           this.peer.on('disconnected', () => { this.isConnected = false; });
-        } catch (e) { this.isServer = false; this.lastError = 'Init crash'; reject(e); }
+        } catch (e) { this.isServer = false; this.lastError = 'Crash'; reject(e); }
       });
     }
 
@@ -287,9 +300,32 @@
       
       conn.on('data', (data) => {
         if (!data || typeof data !== 'object') return;
-        if (data.type === 'error') { this.lastError = data.reason; this.disconnect(); return; }
+        if (data.type === 'error') { 
+          this.lastError = data.reason; 
+          if (!this.isServer && data.reason === 'Pseudo déjà pris') {
+            if (typeof prompt !== 'undefined') {
+              const newPseudo = prompt(`Le pseudo "${this.pseudo}" est déjà pris sur ce serveur.\nVeuillez en choisir un autre :`, this.pseudo);
+              if (newPseudo && newPseudo.trim() && newPseudo.trim() !== this.pseudo) {
+                this.pseudo = newPseudo.trim();
+                this.disconnect();
+                return this.connectToServer({ ID: this.lastServerID });
+              }
+            }
+          }
+          this.disconnect(); 
+          return; 
+        }
         if (data.type === 'init' || data.type === 'rename') {
-          conn.pseudo = String(data.pseudo).trim();
+          const incomingPseudo = String(data.pseudo).trim();
+          if (this.isServer) {
+            const isTaken = this.playerList.some(p => p && String(p).toLowerCase() === incomingPseudo.toLowerCase());
+            if (isTaken && (data.type === 'init' || incomingPseudo.toLowerCase() !== String(conn.pseudo).toLowerCase())) {
+              conn.send({ type: 'error', reason: 'Pseudo déjà pris' });
+              setTimeout(() => conn.close(), 200);
+              return;
+            }
+          }
+          conn.pseudo = incomingPseudo;
           if (data.type === 'init') {
             this.lastJoinedPlayer = conn.pseudo;
             this._playerConnectedThisTick = true;
@@ -345,11 +381,25 @@
 
     async startServer(args) {
       this.isServer = true;
-      try { await this._initPeer(args.ID); this.playerList = [this.pseudo]; } catch (e) { this.isServer = false; }
+      try { 
+        await this._initPeer(args.ID); 
+        this.playerList = [this.pseudo]; 
+      } catch (e) { 
+        this.isServer = false;
+        if (e.type === 'unavailable-id') {
+          if (typeof prompt !== 'undefined') {
+            const newID = prompt(`Le nom de serveur "${args.ID}" est déjà pris.\nVeuillez en choisir un autre :`, args.ID);
+            if (newID && newID !== args.ID) {
+              return await this.startServer({ ID: newID });
+            }
+          }
+        }
+      }
     }
 
     async connectToServer(args) {
       this.isServer = false;
+      this.lastServerID = args.ID;
       try {
         await this._initPeer(null);
         const conn = this.peer.connect(args.ID, { reliable: true });
