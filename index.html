@@ -3,30 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chargeur d'extensions TurboWarp</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Extensions TurboWarp</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background: white; }
+        a { display: block; margin: 10px 0; color: blue; }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Chargeur d'extensions TurboWarp</h1>
-        
-        <div class="input-group">
-            <label for="extensionUrl">URL de l'extension :</label>
-            <input type="text" id="extensionUrl" placeholder="https://exemple.com/extension.js">
-            <button id="loadBtn">Ouvrir dans TurboWarp</button>
-        </div>
-
-        <div class="presets">
-            <h2>Extensions courantes</h2>
-            <div id="presetList"></div>
-        </div>
-
-        <div class="history">
-            <h2>Historique</h2>
-            <ul id="historyList"></ul>
-            <button id="clearHistory">Effacer l'historique</button>
-        </div>
-    </div>
-    <script src="script.js"></script>
+    <h1>Extensions TurboWarp</h1>
+    <a href="calcul/extension.js">calcul/extension.js</a>
+    <a href="IA/extension.js">IA/extension.js</a>
+    <a href="serveur-local/extension.js">serveur-local/extension.js</a>
+    <a href="voice-enregistreur/extension.js">voice-enregistreur/extension.js</a>
 </body>
 </html>
