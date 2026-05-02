@@ -1,0 +1,55 @@
+[
+  {
+    "id": "dossier",
+    "name": "Dossier & Fichiers",
+    "icon": "📁",
+    "description": "Sauvegardes silencieuses et persistantes. Idéal pour les systèmes de 'Save Game' et la gestion de fichiers sur PC/Web sans fenêtres de téléchargement.",
+    "path": "dossier/extension.js",
+    "updates": [
+      { "version": "1.0.0", "date": "2026-05-01", "text": "Lancement initial avec support IndexedDB." }
+    ]
+  },
+  {
+    "id": "IA",
+    "name": "Multi-IA",
+    "icon": "🤖",
+    "description": "Intégrez ChatGPT, Gemini, Claude et plus. Supporte Groq avec les derniers modèles Llama 3.1 et 3.2.",
+    "path": "IA/extension.js",
+    "updates": [
+      { "version": "1.1.0", "date": "2026-05-02", "text": "Ajout des modèles vision de Llama 3.2." },
+      { "version": "1.0.0", "date": "2026-04-20", "text": "Support de base pour OpenAI et Gemini." }
+    ]
+  },
+  {
+    "id": "calcul",
+    "name": "Calcul Brut PRO",
+    "icon": "🎓",
+    "description": "Calculs mathématiques avancés, parsing d'expressions complexes et fonctions trigonométriques étendues avec sécurité renforcée.",
+    "path": "calcul/extension.js",
+    "updates": [
+      { "version": "1.2.0", "date": "2026-05-02", "text": "Correction critique : Remplacement de eval() par un parser sécurisé." },
+      { "version": "1.1.0", "date": "2026-04-15", "text": "Ajout des constantes Pi et e." }
+    ]
+  },
+  {
+    "id": "serveur-local",
+    "name": "Serveur Local P2P",
+    "icon": "🌐",
+    "description": "Communiquez en Peer-to-Peer via WebRTC. Permet de créer des jeux multijoueurs sans serveur central lourd.",
+    "path": "serveur-local/extension.js",
+    "updates": [
+      { "version": "1.1.0", "date": "2026-05-02", "text": "Sécurité : Protection contre la saturation mémoire (Data Bombs)." },
+      { "version": "1.0.0", "date": "2026-04-10", "text": "Support WebRTC avec PeerJS." }
+    ]
+  },
+  {
+    "id": "voice-enregistreur",
+    "name": "Voice Enregistreur",
+    "icon": "🎙️",
+    "description": "Enregistrez de l'audio et manipulez des fichiers vocaux directement dans l'interface Scratch.",
+    "path": "voice-enregistreur/extension.js",
+    "updates": [
+      { "version": "1.0.0", "date": "2026-03-30", "text": "Capture audio de base et export WAV." }
+    ]
+  }
+]

@@ -1,74 +1,60 @@
-const extensionUrlInput = document.getElementById('extensionUrl');
-const loadBtn = document.getElementById('loadBtn');
-const presetList = document.getElementById('presetList');
-const historyList = document.getElementById('historyList');
-const clearHistoryBtn = document.getElementById('clearHistory');
+async function loadExtensions() {
+    const grid = document.getElementById('extension-grid');
+    
+    try {
+        const response = await fetch('extensions.json');
+        if (!response.ok) throw new Error('Impossible de charger le catalogue');
+        
+        const extensions = await response.json();
+        grid.innerHTML = ''; // Effacer le loader
+        
+        extensions.forEach(ext => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            
+            // On récupère la dernière mise à jour
+            const latestUpdate = ext.updates && ext.updates.length > 0 ? ext.updates[0] : null;
+            
+            let updateHtml = '';
+            if (latestUpdate) {
+                updateHtml = `
+                    <div class="update-box">
+                        <div class="update-header">
+                            <span class="version-tag">v${latestUpdate.version}</span>
+                            <span class="update-date">${latestUpdate.date}</span>
+                        </div>
+                        <div class="update-text">${latestUpdate.text}</div>
+                    </div>
+                `;
+            }
 
-const presets = [
-    { name: 'Exemple d\'extension', url: 'https://extensions.turbowarp.org/hello.js' },
-    { name: 'Extension Canvas', url: 'https://extensions.turbowarp.org/canvas.js' },
-    { name: 'Extension WebSocket', url: 'https://extensions.turbowarp.org/websocket.js' }
-];
-
-let history = JSON.parse(localStorage.getItem('extensionHistory') || '[]');
-
-function renderPresets() {
-    presetList.innerHTML = '';
-    presets.forEach(preset => {
-        const div = document.createElement('div');
-        div.className = 'preset-item';
-        div.textContent = preset.name;
-        div.onclick = () => {
-            extensionUrlInput.value = preset.url;
-            loadExtension(preset.url);
-        };
-        presetList.appendChild(div);
-    });
-}
-
-function renderHistory() {
-    historyList.innerHTML = '';
-    history.forEach(url => {
-        const li = document.createElement('li');
-        li.textContent = url;
-        li.onclick = () => {
-            extensionUrlInput.value = url;
-            loadExtension(url);
-        };
-        historyList.appendChild(li);
-    });
-}
-
-function addToHistory(url) {
-    if (!history.includes(url)) {
-        history.unshift(url);
-        if (history.length > 10) history.pop();
-        localStorage.setItem('extensionHistory', JSON.stringify(history));
-        renderHistory();
+            card.innerHTML = `
+                <div class="card-icon">${ext.icon || '🧩'}</div>
+                <h2>${ext.name}</h2>
+                <p>${ext.description}</p>
+                ${updateHtml}
+                <div class="card-actions">
+                    <a href="${ext.path}" class="btn btn-primary" download>Télécharger</a>
+                    <button class="btn btn-secondary" onclick="copyLink('${ext.path}')">Copier le lien</button>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    } catch (error) {
+        grid.innerHTML = `<div class="loader">Erreur : ${error.message}</div>`;
     }
 }
 
-function loadExtension(url) {
-    if (!url) {
-        alert('Veuillez entrer une URL d\'extension');
-        return;
-    }
-    const turbowarpUrl = `https://turbowarp.org/editor?extension=${encodeURIComponent(url)}`;
-    window.open(turbowarpUrl, '_blank');
-    addToHistory(url);
+function copyLink(path) {
+    const fullUrl = window.location.origin + window.location.pathname.replace('index.html', '').replace(/\/$/, '') + '/' + path;
+    navigator.clipboard.writeText(fullUrl).then(() => {
+        const toast = document.getElementById('toast');
+        toast.style.display = 'block';
+        setTimeout(() => {
+            toast.style.display = 'none';
+        }, 2000);
+    });
 }
 
-loadBtn.onclick = () => loadExtension(extensionUrlInput.value);
-
-extensionUrlInput.onkeypress = (e) => {
-    if (e.key === 'Enter') loadExtension(extensionUrlInput.value);
-};
-
-clearHistoryBtn.onclick = () => {
-    history = [];
-    localStorage.removeItem('extensionHistory');
-    renderHistory();
-};
-
-renderPresets();
-renderHistory();
+// Initialisation
+document.addEventListener('DOMContentLoaded', loadExtensions);
