@@ -12,27 +12,10 @@ async function loadExtensions() {
             const card = document.createElement('div');
             card.className = 'card';
             
-            // On récupère la dernière mise à jour
-            const latestUpdate = ext.updates && ext.updates.length > 0 ? ext.updates[0] : null;
-            
-            let updateHtml = '';
-            if (latestUpdate) {
-                updateHtml = `
-                    <div class="update-box">
-                        <div class="update-header">
-                            <span class="version-tag">v${latestUpdate.version}</span>
-                            <span class="update-date">${latestUpdate.date}</span>
-                        </div>
-                        <div class="update-text">${latestUpdate.text}</div>
-                    </div>
-                `;
-            }
-
             card.innerHTML = `
                 <div class="card-icon">${ext.icon || '🧩'}</div>
                 <h2>${ext.name}</h2>
                 <p>${ext.description}</p>
-                ${updateHtml}
                 <div class="card-actions">
                     <a href="${ext.path}" class="btn btn-primary" download>Télécharger</a>
                     <button class="btn btn-secondary" onclick="copyLink('${ext.path}')">Copier le lien</button>
