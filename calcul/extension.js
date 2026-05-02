@@ -1,12 +1,9 @@
 class CalculBrutExtension {
-    // 1. Informations de l'extension (MODIFIÉ ici pour inclure le lien dans le nom)
+    // 1. Informations de l'extension
     getInfo() {
-        // --- PROMOTION DU LIEN PAYPAL DANS LE NOM DE L'EXTENSION ---
-        const supportLink = "Soutien: https://paypal.me/CyprienPisicchio"; 
-        
         return {
             id: 'calculbrut',
-            name: 'Calcul Brut PRO 🎓 ' + supportLink, // Nom avec le lien de soutien
+            name: 'Calcul Brut PRO 🎓',
             color1: '#4C97FF',
             color2: '#0066FF',
             color3: '#1E58AE',
