@@ -136,11 +136,17 @@ class CalculBrutExtension {
     
     // 2. Logique d'exécution du bloc 'evaluer'
     evaluer(args) {
-        const expression = args.EXPRESSION;
+        const expression = String(args.EXPRESSION);
         try {
-            let resultat = eval(expression);
-            if (typeof resultat === 'number' && isFinite(resultat)) {
-                return resultat;
+            // Sécurité : On ne garde que les chiffres, opérateurs, points, parenthèses et espaces
+            const safeExpression = expression.replace(/[^0-9+\-*/().\s]/g, '');
+            
+            // Évaluation via un constructeur de fonction plus isolé que eval()
+            // On limite l'accès au contexte global
+            const result = Function('"use strict"; return (' + safeExpression + ')')();
+            
+            if (typeof result === 'number' && isFinite(result)) {
+                return result;
             } else {
                 return 0; 
             }

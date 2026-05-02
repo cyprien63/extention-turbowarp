@@ -300,6 +300,12 @@
       
       conn.on('data', (data) => {
         if (!data || typeof data !== 'object') return;
+
+        // Protection contre la saturation mémoire (Data Bomb)
+        for (const key in data) {
+          if (typeof data[key] === 'string' && data[key].length > 10000) return;
+        }
+
         if (data.type === 'error') { 
           this.lastError = data.reason; 
           if (!this.isServer && data.reason === 'Pseudo déjà pris') {
