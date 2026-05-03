@@ -1,5 +1,15 @@
 [
   {
+    "id": "pakage",
+    "name": "Pakage",
+    "icon": "📦",
+    "description": "Assemblez et désassemblez vos données facilement. Idéal pour les jeux multijoueurs et la gestion de paquets d'informations.",
+    "path": "pakage/extension.js",
+    "updates": [
+      { "version": "1.0.0", "date": "2026-05-03", "text": "Lancement initial pour faciliter le multijoueur." }
+    ]
+  },
+  {
     "id": "dossier",
     "name": "Dossier & Fichiers",
     "icon": "📁",
