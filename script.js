@@ -46,31 +46,14 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initVisitorCounter() {
-    const adminPanel = document.getElementById('admin-stats');
-    const urlParams = new URLSearchParams(window.location.search);
-    const isAdmin = urlParams.has('stats');
-
-    // Identifiant unique : hostname + pathname (pour différencier les projets sur GitHub)
+    // Identifiant unique pour GitHub Pages
     const siteId = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
         ? 'turbowarp-local-dev' 
         : (window.location.hostname + window.location.pathname).replace(/\/$/, "");
-
-    // On utilise un service de "hits" simple
-    // On ajoute un timestamp pour forcer le rafraîchissement si on est admin
-    const cacheBuster = isAdmin ? `&t=${Date.now()}` : '';
-    const badgeUrl = `https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2F${encodeURIComponent(siteId)}&count_bg=%234C97FF&title_bg=%231E293B&icon=&icon_color=%23E7E7E7&title=Visiteurs&edge_flat=false${cacheBuster}`;
-
-    // 1. Incrémenter (toujours)
+    
+    const badgeUrl = `https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2F${encodeURIComponent(siteId)}&count_bg=%234C97FF&title_bg=%231E293B&icon=&icon_color=%23E7E7E7&title=Visiteurs&edge_flat=false`;
+    
+    // Comptage silencieux (invisible pour tout le monde)
     const tracker = new Image();
     tracker.src = badgeUrl;
-
-    // 2. Afficher si mode admin
-    if (isAdmin && adminPanel) {
-        console.log("Mode Admin activé. ID du site :", siteId);
-        adminPanel.style.display = 'block';
-        adminPanel.innerHTML = `
-            <div style="font-size:10px; margin-bottom:5px; color:var(--text-muted)">Stats pour: ${siteId}</div>
-            <img src="${badgeUrl}" alt="Chargement des stats..." onerror="this.alt='Erreur de chargement'">
-        `;
-    }
 }
