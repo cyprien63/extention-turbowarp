@@ -336,7 +336,6 @@
           if (data.type === 'init') {
             this.lastJoinedPlayer = conn.pseudo;
             this.joinId++;
-            Scratch.vm.runtime.startHats('localserverp2p_whenPlayerConnects');
             if (this.isServer) this._syncPlayers();
           } else if (this.isServer) this._syncPlayers();
           return;
@@ -347,20 +346,22 @@
           
           if (!this.isServer) {
             // Détection pour les clients (qui rejoint/quitte)
+            let joined = false;
+            let left = false;
             newList.forEach(p => {
               if (p !== this.pseudo && !oldList.includes(p)) {
                 this.lastJoinedPlayer = p;
-                this.joinId++;
-                Scratch.vm.runtime.startHats('localserverp2p_whenPlayerConnects');
+                joined = true;
               }
             });
             oldList.forEach(p => {
               if (p !== this.pseudo && !newList.includes(p)) {
                 this.lastLeftPlayer = p;
-                this.leaveId++;
-                Scratch.vm.runtime.startHats('localserverp2p_whenPlayerDisconnects');
+                left = true;
               }
             });
+            if (joined) this.joinId++;
+            if (left) this.leaveId++;
           }
           this.playerList = newList; 
           return; 
@@ -376,7 +377,6 @@
           if (data.key) this.receivedData[data.key] = data.value;
           
           this.messageId++;
-          Scratch.vm.runtime.startHats('localserverp2p_whenMessageReceived');
           if (this.isServer && !target) this._relay(data, conn.peer);
         }
       });
@@ -385,7 +385,6 @@
         this.lastLeftPlayer = leftPseudo;
         this.connections = this.connections.filter(c => c !== conn);
         this.leaveId++;
-        Scratch.vm.runtime.startHats('localserverp2p_whenPlayerDisconnects');
         if (this.isServer) this._syncPlayers();
       });
     }
