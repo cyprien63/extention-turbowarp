@@ -38,7 +38,7 @@
       this.maxPlayers = 0; 
       this.lastError = 'Aucune';
       
-      // Compteurs d'événements pour les blocs "Hat"
+      // Compteurs d'événements globaux
       this.messageId = 0;
       this.joinId = 0;
       this.leaveId = 0;
@@ -422,14 +422,19 @@
     getDataValue(args) { return this.receivedData[args.KEY] || ''; }
     getLastError() { return this.lastError; }
     
-    // --- CORRECTION DES BLOCS HAT ---
+    /**
+     * LOGIQUE DE DÉTECTION DES ÉVÉNEMENTS (HAT BLOCKS)
+     * On utilise util.thread pour mémoriser le dernier ID vu par CHAQUE bloc individuellement.
+     */
     
     whenMessageReceived(args, util) {
       if (!this.isConnected) return false;
+      // Initialisation au chargement : on s'aligne sur le compteur actuel sans déclencher
       if (typeof util.thread.lastMsgId === 'undefined') {
         util.thread.lastMsgId = this.messageId;
         return false;
       }
+      // Déclenchement uniquement si un nouveau message arrive après l'init
       if (this.messageId > util.thread.lastMsgId) {
         util.thread.lastMsgId = this.messageId;
         return true;
