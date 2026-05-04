@@ -147,6 +147,23 @@ footer {
     font-size: 0.9rem;
 }
 
+.admin-stats {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    background: var(--card-bg);
+    padding: 0.5rem;
+    border-radius: 8px;
+    border: 1px solid var(--primary);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    z-index: 9999;
+    display: none; /* Masqué par défaut */
+}
+
+.admin-stats img {
+    display: block;
+}
+
 .toast {
     position: fixed;
     bottom: 2rem;
