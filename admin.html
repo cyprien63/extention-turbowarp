@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Stats TurboWarp</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .admin-container {
+            max-width: 800px;
+            margin: 4rem auto;
+            padding: 2rem;
+            background: var(--card-bg);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+        .stats-box {
+            margin-top: 2rem;
+            padding: 2rem;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+        }
+        .stat-number {
+            font-size: 4rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin: 1rem 0;
+        }
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            max-width: 300px;
+            margin: 2rem auto;
+        }
+        input {
+            padding: 0.75rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text);
+        }
+        #admin-content { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="login-section" class="admin-container">
+            <h1>🔒 Accès Admin</h1>
+            <p>Veuillez entrer le code secret pour voir les statistiques.</p>
+            <div class="login-form">
+                <input type="password" id="admin-pass" placeholder="Mot de passe">
+                <button class="btn btn-primary" onclick="checkAccess()">Connexion</button>
+            </div>
+            <p id="login-error" style="color:var(--accent); display:none; margin-top:1rem;">Code incorrect.</p>
+        </div>
+
+        <div id="admin-content" class="admin-container">
+            <h1>📊 Statistiques du Site</h1>
+            <div class="stats-box">
+                <p>Nombre total de visites</p>
+                <div id="total-hits" class="stat-number">...</div>
+                <div id="hits-badge"></div>
+            </div>
+            <div style="margin-top: 2rem;">
+                <button class="btn btn-secondary" onclick="location.reload()">Rafraîchir</button>
+                <a href="index.html" class="btn btn-primary" style="margin-top:1rem; display:inline-block;">Retour au site</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Le code secret est "admin123" par défaut, l'utilisateur peut le changer
+        const SECRET_HASH = "admin123"; 
+
+        function checkAccess() {
+            const pass = document.getElementById('admin-pass').value;
+            if (pass === SECRET_HASH) {
+                document.getElementById('login-section').style.display = 'none';
+                document.getElementById('admin-content').style.display = 'block';
+                loadStats();
+            } else {
+                document.getElementById('login-error').style.display = 'block';
+            }
+        }
+
+        function loadStats() {
+            const siteId = (window.location.hostname + window.location.pathname).replace("admin.html", "").replace(/\/$/, "");
+            const badgeUrl = `https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2F${encodeURIComponent(siteId)}&count_bg=%234C97FF&title_bg=%231E293B&icon=&icon_color=%23E7E7E7&title=Visiteurs&edge_flat=false&t=${Date.now()}`;
+            
+            // On injecte le badge pour forcer la mise à jour
+            document.getElementById('hits-badge').innerHTML = `<img src="${badgeUrl}" style="opacity:0; position:absolute;">`;
+            
+            // On essaie d'extraire le texte du badge ou on affiche simplement le badge
+            document.getElementById('total-hits').innerHTML = `<img src="${badgeUrl}" style="height: 50px;">`;
+        }
+    </script>
+</body>
+</html>

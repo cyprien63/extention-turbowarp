@@ -1,18 +1,14 @@
 --- ACCÈS ADMINISTRATEUR (PRIVÉ) ---
 
-Voici comment accéder aux statistiques de votre site :
+Voici comment accéder aux statistiques de votre site via la nouvelle interface :
 
-1. LIEN PUBLIC : https://votre-pseudo.github.io/extention-turbowarp/
-2. LIEN ADMIN (Stats) : https://votre-pseudo.github.io/extention-turbowarp/?stats
+1. LIEN PUBLIC : https://cyprien63.github.io/extention-turbowarp/
+2. INTERFACE ADMIN : https://cyprien63.github.io/extention-turbowarp/admin.html
 
---- FONCTIONNEMENT TECHNIQUE ---
+MOT DE PASSE PAR DÉFAUT : admin123
 
-Le site étant statique (GitHub Pages), il ne possède pas de base de données. 
-Le compteur fonctionne grâce à un "Pixel de suivi" (via le service HITS) :
+(Vous pouvez changer ce mot de passe à la ligne 64 du fichier admin.html)
 
-1. Chaque fois qu'une page se charge, le script crée une image invisible.
-2. Le navigateur demande cette image au serveur de HITS.
-3. Le serveur de HITS reçoit la requête, enregistre l'adresse IP (pour éviter de compter 100 fois la même personne) et incrémente un compteur dans SA base de données.
-4. Le script n'affiche l'image (le badge) que si vous ajoutez "?stats" dans l'URL.
+--- FONCTIONNEMENT ---
+Cette page affiche un tableau de bord privé. Le compteur continue de s'incrémenter de manière invisible sur la page d'accueil pour tous les visiteurs.
 
-C'est la méthode la plus légère et efficace pour un site sans serveur.
