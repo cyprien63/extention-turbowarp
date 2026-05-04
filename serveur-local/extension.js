@@ -3,7 +3,7 @@
 
   const PEERJS_URL = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js';
 
-  // Icône "Global Connection" très arrondie et moderne
+  // Icône "Global Connection"
   const menuIconURI = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiLz48bGluZSB4MT0iMiIgeTE9IjEyIiB4Mj0iMjIiIHkyPSIxMiIvPjxwYXRoIGQ9Ik0xMiAyYTE1LjMgMTUuMyAwIDAgMSA0IDEwIDE1LjMgMTUuMyAwIDAgMS00IDEwIDE1LjMgMTUuMyAwIDAgMS00LTEwIDE1LjMgMTUuMyAwIDAgMSA0LTEweiIvPjwvc3ZnPg==';
 
   const loadPeerJS = async () => {
@@ -37,8 +37,8 @@
       this.playerList = [];
       this.maxPlayers = 0; 
       this.lastError = 'Aucune';
-      this.lastServerID = '';
       
+      // Compteurs d'événements pour les blocs "Hat"
       this.messageId = 0;
       this.joinId = 0;
       this.leaveId = 0;
@@ -57,7 +57,6 @@
         color1: '#4C97FF',
         color2: '#3373CC',
         blocks: [
-          // --- SETUP ---
           { text: '--- Configuration ---', blockType: 'label' },
           {
             opcode: 'setPseudo',
@@ -83,7 +82,6 @@
             text: 'Se déconnecter / Fermer',
           },
 
-          // --- MODERATION ---
           { text: '--- Gestion (Hôte) ---', blockType: 'label' },
           {
             opcode: 'setMaxPlayers',
@@ -98,7 +96,6 @@
             arguments: { PSEUDO: { type: 'string', defaultValue: 'Joueur2' } }
           },
 
-          // --- MESSAGING ---
           { text: '--- Communication ---', blockType: 'label' },
           {
             opcode: 'broadcast',
@@ -135,7 +132,6 @@
             }
           },
 
-          // --- EVENTS ---
           { text: '--- Événements ---', blockType: 'label' },
           {
             opcode: 'whenMessageReceived',
@@ -153,7 +149,6 @@
             text: 'Quand un joueur quitte',
           },
 
-          // --- REPORTERS ---
           { text: '--- Données Reçues ---', blockType: 'label' },
           {
             opcode: 'getLastMessage',
@@ -182,7 +177,6 @@
             text: 'joueur qui quitte',
           },
 
-          // --- STATUS ---
           { text: '--- État Réseau ---', blockType: 'label' },
           {
             opcode: 'getMyPseudo',
@@ -306,11 +300,6 @@
       conn.on('data', (data) => {
         if (!data || typeof data !== 'object') return;
 
-        // Protection contre la saturation mémoire (Data Bomb)
-        for (const key in data) {
-          if (typeof data[key] === 'string' && data[key].length > 10000) return;
-        }
-
         if (data.type === 'error') { 
           this.lastError = data.reason; 
           this.disconnect(); 
@@ -318,14 +307,6 @@
         }
         if (data.type === 'init' || data.type === 'rename') {
           const incomingPseudo = String(data.pseudo).trim();
-          if (this.isServer) {
-            const isTaken = this.playerList.some(p => p && String(p).toLowerCase() === incomingPseudo.toLowerCase());
-            if (isTaken && (data.type === 'init' || incomingPseudo.toLowerCase() !== String(conn.pseudo).toLowerCase())) {
-              conn.send({ type: 'error', reason: 'Pseudo déjà pris' });
-              setTimeout(() => conn.close(), 200);
-              return;
-            }
-          }
           conn.pseudo = incomingPseudo;
           if (data.type === 'init') {
             this.lastJoinedPlayer = conn.pseudo;
@@ -337,24 +318,19 @@
         if (data.type === 'playerList') {
           const newList = data.list;
           const oldList = this.playerList || [];
-          
           if (!this.isServer) {
-            let joined = false;
-            let left = false;
             newList.forEach(p => {
               if (p !== this.pseudo && !oldList.includes(p)) {
                 this.lastJoinedPlayer = p;
-                joined = true;
+                this.joinId++;
               }
             });
             oldList.forEach(p => {
               if (p !== this.pseudo && !newList.includes(p)) {
                 this.lastLeftPlayer = p;
-                left = true;
+                this.leaveId++;
               }
             });
-            if (joined) this.joinId++;
-            if (left) this.leaveId++;
           }
           this.playerList = newList; 
           return; 
@@ -363,9 +339,7 @@
           const target = data.target ? String(data.target).trim().toLowerCase() : null;
           if (target && target !== this.pseudo.toLowerCase()) { if (this.isServer) this._relayToTarget(data); return; }
           
-          if (data.message !== undefined) {
-            this.lastMessage = data.message;
-          }
+          if (data.message !== undefined) this.lastMessage = data.message;
           this.lastSender = data.pseudo;
           if (data.key) this.receivedData[data.key] = data.value;
           
@@ -374,8 +348,7 @@
         }
       });
       conn.on('close', () => {
-        const leftPseudo = conn.pseudo || conn.peer;
-        this.lastLeftPlayer = leftPseudo;
+        this.lastLeftPlayer = conn.pseudo || 'Inconnu';
         this.connections = this.connections.filter(c => c !== conn);
         this.leaveId++;
         if (this.isServer) this._syncPlayers();
@@ -411,15 +384,12 @@
       try { 
         await this._initPeer(args.ID); 
         this.playerList = [this.pseudo]; 
-      } catch (e) { 
-        this.isServer = false;
-      }
+      } catch (e) { this.isServer = false; }
     }
 
     async connectToServer(args) {
       this.isServer = false;
       this.playerList = [];
-      this.lastServerID = args.ID;
       try {
         await this._initPeer(null);
         const conn = this.peer.connect(args.ID, { reliable: true });
@@ -452,12 +422,15 @@
     getDataValue(args) { return this.receivedData[args.KEY] || ''; }
     getLastError() { return this.lastError; }
     
+    // --- CORRECTION DES BLOCS HAT ---
+    
     whenMessageReceived(args, util) {
       if (!this.isConnected) return false;
       if (typeof util.thread.lastMsgId === 'undefined') {
         util.thread.lastMsgId = this.messageId;
+        return false;
       }
-      if (util.thread.lastMsgId < this.messageId) {
+      if (this.messageId > util.thread.lastMsgId) {
         util.thread.lastMsgId = this.messageId;
         return true;
       }
@@ -468,8 +441,9 @@
       if (!this.isConnected) return false;
       if (typeof util.thread.lastJoinId === 'undefined') {
         util.thread.lastJoinId = this.joinId;
+        return false;
       }
-      if (util.thread.lastJoinId < this.joinId) {
+      if (this.joinId > util.thread.lastJoinId) {
         util.thread.lastJoinId = this.joinId;
         return true;
       }
@@ -480,8 +454,9 @@
       if (!this.isConnected) return false;
       if (typeof util.thread.lastLeaveId === 'undefined') {
         util.thread.lastLeaveId = this.leaveId;
+        return false;
       }
-      if (util.thread.lastLeaveId < this.leaveId) {
+      if (this.leaveId > util.thread.lastLeaveId) {
         util.thread.lastLeaveId = this.leaveId;
         return true;
       }
