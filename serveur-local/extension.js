@@ -341,20 +341,48 @@
           } else if (this.isServer) this._syncPlayers();
           return;
         }
-        if (data.type === 'playerList') { this.playerList = data.list; return; }
+        if (data.type === 'playerList') {
+          const newList = data.list;
+          const oldList = this.playerList || [];
+          
+          if (!this.isServer) {
+            // Détection pour les clients (qui rejoint/quitte)
+            newList.forEach(p => {
+              if (p !== this.pseudo && !oldList.includes(p)) {
+                this.lastJoinedPlayer = p;
+                this.joinId++;
+                Scratch.vm.runtime.startHats('localserverp2p_whenPlayerConnects');
+              }
+            });
+            oldList.forEach(p => {
+              if (p !== this.pseudo && !newList.includes(p)) {
+                this.lastLeftPlayer = p;
+                this.leaveId++;
+                Scratch.vm.runtime.startHats('localserverp2p_whenPlayerDisconnects');
+              }
+            });
+          }
+          this.playerList = newList; 
+          return; 
+        }
         if (data.type === 'msg') {
           const target = data.target ? String(data.target).trim().toLowerCase() : null;
           if (target && target !== this.pseudo.toLowerCase()) { if (this.isServer) this._relayToTarget(data); return; }
-          this.lastMessage = data.message || '';
+          
+          if (data.message !== undefined) {
+            this.lastMessage = data.message;
+          }
           this.lastSender = data.pseudo;
           if (data.key) this.receivedData[data.key] = data.value;
+          
           this.messageId++;
           Scratch.vm.runtime.startHats('localserverp2p_whenMessageReceived');
           if (this.isServer && !target) this._relay(data, conn.peer);
         }
       });
       conn.on('close', () => {
-        this.lastLeftPlayer = conn.pseudo || conn.peer;
+        const leftPseudo = conn.pseudo || conn.peer;
+        this.lastLeftPlayer = leftPseudo;
         this.connections = this.connections.filter(c => c !== conn);
         this.leaveId++;
         Scratch.vm.runtime.startHats('localserverp2p_whenPlayerDisconnects');
@@ -406,6 +434,7 @@
 
     async connectToServer(args) {
       this.isServer = false;
+      this.playerList = []; // Reset pour une détection propre
       this.lastServerID = args.ID;
       try {
         await this._initPeer(null);
@@ -442,10 +471,10 @@
     whenMessageReceived(args, util) {
       if (typeof util.thread.lastMsgId === 'undefined') {
         util.thread.lastMsgId = this.messageId;
-        return this.messageId > 0;
+        return false;
       }
-      if (util.thread.lastMsgId !== this.messageId) {
-        util.thread.lastMsgId = this.messageId;
+      if (util.thread.lastMsgId < this.messageId) {
+        util.thread.lastMsgId++;
         return true;
       }
       return false;
@@ -454,10 +483,10 @@
     whenPlayerConnects(args, util) {
       if (typeof util.thread.lastJoinId === 'undefined') {
         util.thread.lastJoinId = this.joinId;
-        return this.joinId > 0;
+        return false;
       }
-      if (util.thread.lastJoinId !== this.joinId) {
-        util.thread.lastJoinId = this.joinId;
+      if (util.thread.lastJoinId < this.joinId) {
+        util.thread.lastJoinId++;
         return true;
       }
       return false;
@@ -466,10 +495,10 @@
     whenPlayerDisconnects(args, util) {
       if (typeof util.thread.lastLeaveId === 'undefined') {
         util.thread.lastLeaveId = this.leaveId;
-        return this.leaveId > 0;
+        return false;
       }
-      if (util.thread.lastLeaveId !== this.leaveId) {
-        util.thread.lastLeaveId = this.leaveId;
+      if (util.thread.lastLeaveId < this.leaveId) {
+        util.thread.lastLeaveId++;
         return true;
       }
       return false;
