@@ -37,9 +37,12 @@
       this.maxPlayers = 0; 
       this.lastError = 'Aucune';
       
-      this.messageId = 0;
-      this.joinId = 0;
-      this.leaveId = 0;
+      // Stockage des événements en attente
+      this._pendingEvents = {
+        message: false,
+        join: false,
+        leave: false
+      };
 
       this.lastJoinedPlayer = '';
       this.lastLeftPlayer = '';
@@ -121,9 +124,7 @@
         this.isConnected = false;
         this.isServer = false;
         this.playerList = [];
-        this.messageId = 0;
-        this.joinId = 0;
-        this.leaveId = 0;
+        this._pendingEvents = { message: false, join: false, leave: false };
         this.receivedData = {};
       }
     }
@@ -136,37 +137,26 @@
           this.peer = new Peer(id, {
             config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
           });
-          this.peer.on('open', (pid) => { this.isConnected = true; this.lastError = 'Aucune'; resolve(pid); });
+          this.peer.on('open', (pid) => { this.isConnected = true; resolve(pid); });
           this.peer.on('connection', (conn) => this._setupConnection(conn));
-          this.peer.on('error', (err) => { 
-            this.isConnected = false; 
-            const errorMessages = { 'unavailable-id': 'ID déjà pris', 'invalid-id': 'ID invalide', 'network': 'Erreur réseau' };
-            this.lastError = errorMessages[err.type] || err.type;
-            reject(err); 
-          });
-        } catch (e) { this.lastError = 'Crash'; reject(e); }
+          this.peer.on('error', (err) => { this.isConnected = false; reject(err); });
+        } catch (e) { reject(e); }
       });
     }
 
     _setupConnection(conn) {
       conn.on('open', () => {
-        if (this.isServer && this.maxPlayers > 0 && this.connections.length >= this.maxPlayers) {
-          conn.send({ type: 'error', reason: 'Serveur plein' });
-          setTimeout(() => conn.close(), 500);
-          return;
-        }
         this.connections.push(conn);
         conn.send({ type: 'init', pseudo: this.pseudo });
       });
       
       conn.on('data', (data) => {
         if (!data || typeof data !== 'object') return;
-        if (data.type === 'error') { this.lastError = data.reason; this.disconnect(); return; }
         if (data.type === 'init' || data.type === 'rename') {
           conn.pseudo = String(data.pseudo).trim();
           if (data.type === 'init') {
             this.lastJoinedPlayer = conn.pseudo;
-            this.joinId++;
+            this._pendingEvents.join = true;
             if (this.isServer) this._syncPlayers();
           } else if (this.isServer) this._syncPlayers();
           return;
@@ -175,8 +165,8 @@
           const newList = data.list;
           const oldList = this.playerList || [];
           if (!this.isServer) {
-            newList.forEach(p => { if (p !== this.pseudo && !oldList.includes(p)) { this.lastJoinedPlayer = p; this.joinId++; } });
-            oldList.forEach(p => { if (p !== this.pseudo && !newList.includes(p)) { this.lastLeftPlayer = p; this.leaveId++; } });
+            newList.forEach(p => { if (p !== this.pseudo && !oldList.includes(p)) { this.lastJoinedPlayer = p; this._pendingEvents.join = true; } });
+            oldList.forEach(p => { if (p !== this.pseudo && !newList.includes(p)) { this.lastLeftPlayer = p; this._pendingEvents.leave = true; } });
           }
           this.playerList = newList; 
           return; 
@@ -187,14 +177,14 @@
           if (data.message !== undefined) this.lastMessage = data.message;
           this.lastSender = data.pseudo;
           if (data.key) this.receivedData[data.key] = data.value;
-          this.messageId++;
+          this._pendingEvents.message = true;
           if (this.isServer && !target) this._relay(data, conn.peer);
         }
       });
       conn.on('close', () => {
         this.lastLeftPlayer = conn.pseudo || 'Inconnu';
         this.connections = this.connections.filter(c => c !== conn);
-        this.leaveId++;
+        this._pendingEvents.leave = true;
         if (this.isServer) this._syncPlayers();
       });
     }
@@ -232,41 +222,28 @@
     }
 
     getDataValue(args) { return this.receivedData[args.KEY] || ''; }
-    getLastError() { return this.lastError; }
     
-    // --- LOGIQUE HAT CORRIGÉE ---
-    
-    whenMessageReceived(args, util) {
-      if (!this.isConnected) return false;
-      if (typeof util.thread.lastMsgId === 'undefined') {
-        util.thread.lastMsgId = this.messageId;
-      }
-      if (this.messageId > util.thread.lastMsgId) {
-        util.thread.lastMsgId = this.messageId; // On bloque direct
-        return true; 
-      }
-      return false;
-    }
-    
-    whenPlayerConnects(args, util) {
-      if (!this.isConnected) return false;
-      if (typeof util.thread.lastJoinId === 'undefined') {
-        util.thread.lastJoinId = this.joinId;
-      }
-      if (this.joinId > util.thread.lastJoinId) {
-        util.thread.lastJoinId = this.joinId;
+    // --- NOUVELLE LOGIQUE D'ÉVÉNEMENTS ANTI-CLIGNOTEMENT ---
+
+    whenMessageReceived() {
+      if (this._pendingEvents.message) {
+        this._pendingEvents.message = false; // On consomme l'événement immédiatement
         return true;
       }
       return false;
     }
-    
-    whenPlayerDisconnects(args, util) {
-      if (!this.isConnected) return false;
-      if (typeof util.thread.lastLeaveId === 'undefined') {
-        util.thread.lastLeaveId = this.leaveId;
+
+    whenPlayerConnects() {
+      if (this._pendingEvents.join) {
+        this._pendingEvents.join = false; // On consomme l'événement
+        return true;
       }
-      if (this.leaveId > util.thread.lastLeaveId) {
-        util.thread.lastLeaveId = this.leaveId;
+      return false;
+    }
+
+    whenPlayerDisconnects() {
+      if (this._pendingEvents.leave) {
+        this._pendingEvents.leave = false; // On consomme l'événement
         return true;
       }
       return false;
@@ -281,6 +258,7 @@
     getAllPlayers() { return this.playerList.join(', '); }
     getMyID() { return this.peer ? this.peer.id : ''; }
     status() { return this.isConnected; }
+    getLastError() { return this.lastError; }
   }
 
   Scratch.extensions.register(new LocalServerExtension());
