@@ -474,7 +474,7 @@
         return false;
       }
       if (util.thread.lastMsgId < this.messageId) {
-        util.thread.lastMsgId++;
+        util.thread.lastMsgId = this.messageId;
         return true;
       }
       return false;
@@ -486,7 +486,7 @@
         return false;
       }
       if (util.thread.lastJoinId < this.joinId) {
-        util.thread.lastJoinId++;
+        util.thread.lastJoinId = this.joinId;
         return true;
       }
       return false;
@@ -498,7 +498,7 @@
         return false;
       }
       if (util.thread.lastLeaveId < this.leaveId) {
-        util.thread.lastLeaveId++;
+        util.thread.lastLeaveId = this.leaveId;
         return true;
       }
       return false;
