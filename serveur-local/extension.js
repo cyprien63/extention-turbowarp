@@ -248,6 +248,10 @@
         this.isConnected = false;
         this.isServer = false;
         this.playerList = [];
+        this.messageId = 0;
+        this.joinId = 0;
+        this.leaveId = 0;
+        this.receivedData = {};
       }
     }
 
@@ -309,16 +313,6 @@
 
         if (data.type === 'error') { 
           this.lastError = data.reason; 
-          if (!this.isServer && data.reason === 'Pseudo déjà pris') {
-            if (typeof prompt !== 'undefined') {
-              const newPseudo = prompt(`Le pseudo "${this.pseudo}" est déjà pris sur ce serveur.\nVeuillez en choisir un autre :`, this.pseudo);
-              if (newPseudo && newPseudo.trim() && newPseudo.trim() !== this.pseudo) {
-                this.pseudo = newPseudo.trim();
-                this.disconnect();
-                return this.connectToServer({ ID: this.lastServerID });
-              }
-            }
-          }
           this.disconnect(); 
           return; 
         }
@@ -345,7 +339,6 @@
           const oldList = this.playerList || [];
           
           if (!this.isServer) {
-            // Détection pour les clients (qui rejoint/quitte)
             let joined = false;
             let left = false;
             newList.forEach(p => {
@@ -420,20 +413,12 @@
         this.playerList = [this.pseudo]; 
       } catch (e) { 
         this.isServer = false;
-        if (e.type === 'unavailable-id') {
-          if (typeof prompt !== 'undefined') {
-            const newID = prompt(`Le nom de serveur "${args.ID}" est déjà pris.\nVeuillez en choisir un autre :`, args.ID);
-            if (newID && newID !== args.ID) {
-              return await this.startServer({ ID: newID });
-            }
-          }
-        }
       }
     }
 
     async connectToServer(args) {
       this.isServer = false;
-      this.playerList = []; // Reset pour une détection propre
+      this.playerList = [];
       this.lastServerID = args.ID;
       try {
         await this._initPeer(null);
@@ -468,9 +453,9 @@
     getLastError() { return this.lastError; }
     
     whenMessageReceived(args, util) {
+      if (!this.isConnected) return false;
       if (typeof util.thread.lastMsgId === 'undefined') {
         util.thread.lastMsgId = this.messageId;
-        return false;
       }
       if (util.thread.lastMsgId < this.messageId) {
         util.thread.lastMsgId = this.messageId;
@@ -480,9 +465,9 @@
     }
     
     whenPlayerConnects(args, util) {
+      if (!this.isConnected) return false;
       if (typeof util.thread.lastJoinId === 'undefined') {
         util.thread.lastJoinId = this.joinId;
-        return false;
       }
       if (util.thread.lastJoinId < this.joinId) {
         util.thread.lastJoinId = this.joinId;
@@ -492,9 +477,9 @@
     }
     
     whenPlayerDisconnects(args, util) {
+      if (!this.isConnected) return false;
       if (typeof util.thread.lastLeaveId === 'undefined') {
         util.thread.lastLeaveId = this.leaveId;
-        return false;
       }
       if (util.thread.lastLeaveId < this.leaveId) {
         util.thread.lastLeaveId = this.leaveId;
