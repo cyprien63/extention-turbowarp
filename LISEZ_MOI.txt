@@ -1,0 +1,9 @@
+--- STATISTIQUES DU SITE ---
+
+Pour voir le nombre de visiteurs :
+Ajoutez "?stats" à la fin de l'adresse de votre site.
+
+Exemple : https://cyprien63.github.io/extention-turbowarp/?stats
+
+Il n'y a plus de mot de passe.
+Les données des extensions sont maintenant directement dans le fichier script.js.
