@@ -2,7 +2,6 @@
   'use strict';
 
   const PEERJS_URL = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js';
-
   const menuIconURI = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiLz48bGluZSB4MT0iMiIgeTE9IjEyIiB4Mj0iMjIiIHkyPSIxMiIvPjxwYXRoIGQ9Ik0xMiAyYTE1LjMgMTUuMyAwIDAgMSA0IDEwIDE1LjMgMTUuMyAwIDAgMS00IDEwIDE1LjMgMTUuMyAwIDAgMS00LTEwIDE1LjMgMTUuMyAwIDAgMSA0LTEweiIvPjwvc3ZnPg==';
 
   const loadPeerJS = async () => {
@@ -37,15 +36,11 @@
       this.maxPlayers = 0; 
       this.lastError = 'Aucune';
       
-      // Stockage des événements en attente
-      this._pendingEvents = {
-        message: false,
-        join: false,
-        leave: false
-      };
+      // Sécurité : Ignorer tout pendant les 2 premières secondes
+      this._ready = false;
+      setTimeout(() => { this._ready = true; }, 2000);
 
-      this.lastJoinedPlayer = '';
-      this.lastLeftPlayer = '';
+      this._pendingEvents = { message: false, join: false, leave: false };
       this.receivedData = {};
     }
 
@@ -71,12 +66,10 @@
           { opcode: 'broadcastData', blockType: 'command', text: 'Envoyer donnée [KEY] = [VALUE] à tous', arguments: { KEY: { type: 'string', defaultValue: 'pos_x' }, VALUE: { type: 'string', defaultValue: '100' } } },
           { opcode: 'sendTo', blockType: 'command', text: 'Envoyer à [PSEUDO] le message [MESSAGE]', arguments: { PSEUDO: { type: 'string', defaultValue: 'Joueur2' }, MESSAGE: { type: 'string', defaultValue: 'Secret...' } } },
           { opcode: 'sendToData', blockType: 'command', text: 'Envoyer à [PSEUDO] la donnée [KEY] = [VALUE]', arguments: { PSEUDO: { type: 'string', defaultValue: 'Joueur2' }, KEY: { type: 'string', defaultValue: 'hp' }, VALUE: { type: 'string', defaultValue: '10' } } },
-          
           { text: '--- Événements ---', blockType: 'label' },
           { opcode: 'whenMessageReceived', blockType: 'hat', text: 'Quand un message est reçu' },
           { opcode: 'whenPlayerConnects', blockType: 'hat', text: 'Quand un joueur rejoint' },
           { opcode: 'whenPlayerDisconnects', blockType: 'hat', text: 'Quand un joueur quitte' },
-
           { text: '--- Données ---', blockType: 'label' },
           { opcode: 'getLastMessage', blockType: 'reporter', text: 'dernier message' },
           { opcode: 'getDataValue', blockType: 'reporter', text: 'valeur de [KEY]', arguments: { KEY: { type: 'string', defaultValue: 'pos_x' } } },
@@ -94,49 +87,17 @@
       };
     }
 
-    setPseudo(args) {
-      this.pseudo = String(args.PSEUDO).trim();
-      if (this.isConnected) {
-        this._sendRaw({ type: 'rename', pseudo: this.pseudo });
-        if (this.isServer) this._syncPlayers();
-      }
-    }
-
-    setMaxPlayers(args) {
-      this.maxPlayers = Math.max(0, Number(args.MAX) || 0);
-    }
-
-    kickPlayer(args) {
-      if (!this.isServer) return;
-      const targetPseudo = String(args.PSEUDO).trim().toLowerCase();
-      const conn = this.connections.find(c => String(c.pseudo).trim().toLowerCase() === targetPseudo);
-      if (conn) {
-        conn.send({ type: 'error', reason: 'Exclu par l\'hôte' });
-        setTimeout(() => conn.close(), 200);
-      }
-    }
-
-    disconnect() {
-      if (this.peer) {
-        this.peer.destroy();
-        this.peer = null;
-        this.connections = [];
-        this.isConnected = false;
-        this.isServer = false;
-        this.playerList = [];
-        this._pendingEvents = { message: false, join: false, leave: false };
-        this.receivedData = {};
-      }
-    }
+    setPseudo(args) { this.pseudo = String(args.PSEUDO).trim(); if (this.isConnected) { this._sendRaw({ type: 'rename', pseudo: this.pseudo }); if (this.isServer) this._syncPlayers(); } }
+    setMaxPlayers(args) { this.maxPlayers = Math.max(0, Number(args.MAX) || 0); }
+    kickPlayer(args) { if (!this.isServer) return; const targetPseudo = String(args.PSEUDO).trim().toLowerCase(); const conn = this.connections.find(c => String(c.pseudo).trim().toLowerCase() === targetPseudo); if (conn) { conn.send({ type: 'error', reason: 'Exclu par l\'hôte' }); setTimeout(() => conn.close(), 200); } }
+    disconnect() { if (this.peer) { this.peer.destroy(); this.peer = null; this.connections = []; this.isConnected = false; this.isServer = false; this.playerList = []; this._pendingEvents = { message: false, join: false, leave: false }; } }
 
     async _initPeer(id) {
       if (this.peer) this.disconnect();
       await loadPeerJS();
       return new Promise((resolve, reject) => {
         try {
-          this.peer = new Peer(id, {
-            config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
-          });
+          this.peer = new Peer(id, { config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] } });
           this.peer.on('open', (pid) => { this.isConnected = true; resolve(pid); });
           this.peer.on('connection', (conn) => this._setupConnection(conn));
           this.peer.on('error', (err) => { this.isConnected = false; reject(err); });
@@ -145,20 +106,13 @@
     }
 
     _setupConnection(conn) {
-      conn.on('open', () => {
-        this.connections.push(conn);
-        conn.send({ type: 'init', pseudo: this.pseudo });
-      });
-      
+      conn.on('open', () => { this.connections.push(conn); conn.send({ type: 'init', pseudo: this.pseudo }); });
       conn.on('data', (data) => {
         if (!data || typeof data !== 'object') return;
         if (data.type === 'init' || data.type === 'rename') {
           conn.pseudo = String(data.pseudo).trim();
-          if (data.type === 'init') {
-            this.lastJoinedPlayer = conn.pseudo;
-            this._pendingEvents.join = true;
-            if (this.isServer) this._syncPlayers();
-          } else if (this.isServer) this._syncPlayers();
+          if (data.type === 'init') { this.lastJoinedPlayer = conn.pseudo; this._pendingEvents.join = true; if (this.isServer) this._syncPlayers(); }
+          else if (this.isServer) this._syncPlayers();
           return;
         }
         if (data.type === 'playerList') {
@@ -181,28 +135,12 @@
           if (this.isServer && !target) this._relay(data, conn.peer);
         }
       });
-      conn.on('close', () => {
-        this.lastLeftPlayer = conn.pseudo || 'Inconnu';
-        this.connections = this.connections.filter(c => c !== conn);
-        this._pendingEvents.leave = true;
-        if (this.isServer) this._syncPlayers();
-      });
+      conn.on('close', () => { this.lastLeftPlayer = conn.pseudo || 'Inconnu'; this.connections = this.connections.filter(c => c !== conn); this._pendingEvents.leave = true; if (this.isServer) this._syncPlayers(); });
     }
 
-    _syncPlayers() {
-      if (!this.isServer) return;
-      const list = this.connections.map(c => c.pseudo || c.peer);
-      list.push(this.pseudo);
-      this.playerList = list;
-      this._sendRaw({ type: 'playerList', list: list });
-    }
-
+    _syncPlayers() { if (!this.isServer) return; const list = this.connections.map(c => c.pseudo || c.peer); list.push(this.pseudo); this.playerList = list; this._sendRaw({ type: 'playerList', list: list }); }
     _relay(data, senderId) { this.connections.forEach(conn => { if (conn.peer !== senderId && conn.open) conn.send(data); }); }
-    _relayToTarget(data) {
-      const targetPseudo = String(data.target).trim().toLowerCase();
-      const targetConn = this.connections.find(c => String(c.pseudo).trim().toLowerCase() === targetPseudo);
-      if (targetConn && targetConn.open) targetConn.send(data);
-    }
+    _relayToTarget(data) { const targetPseudo = String(data.target).trim().toLowerCase(); const targetConn = this.connections.find(c => String(c.pseudo).trim().toLowerCase() === targetPseudo); if (targetConn && targetConn.open) targetConn.send(data); }
     _sendRaw(data) { this.connections.forEach(conn => { if (conn.open) conn.send(data); }); }
 
     async startServer(args) { this.isServer = true; try { await this._initPeer(args.ID); this.playerList = [this.pseudo]; } catch (e) { this.isServer = false; } }
@@ -210,42 +148,26 @@
 
     broadcast(args) { if (this.isConnected) this._sendRaw({ type: 'msg', message: args.MESSAGE, pseudo: this.pseudo }); }
     broadcastData(args) { if (this.isConnected) this._sendRaw({ type: 'msg', key: String(args.KEY), value: String(args.VALUE), pseudo: this.pseudo }); }
-    sendTo(args) {
-      if (!this.isConnected) return;
-      const data = { type: 'msg', message: args.MESSAGE, target: String(args.PSEUDO).trim(), pseudo: this.pseudo };
-      if (this.isServer) this._relayToTarget(data); else this._sendRaw(data);
-    }
-    sendToData(args) {
-      if (!this.isConnected) return;
-      const data = { type: 'msg', key: String(args.KEY), value: String(args.VALUE), target: String(args.PSEUDO).trim(), pseudo: this.pseudo };
-      if (this.isServer) this._relayToTarget(data); else this._sendRaw(data);
-    }
+    sendTo(args) { if (!this.isConnected) return; const data = { type: 'msg', message: args.MESSAGE, target: String(args.PSEUDO).trim(), pseudo: this.pseudo }; if (this.isServer) this._relayToTarget(data); else this._sendRaw(data); }
+    sendToData(args) { if (!this.isConnected) return; const data = { type: 'msg', key: String(args.KEY), value: String(args.VALUE), target: String(args.PSEUDO).trim(), pseudo: this.pseudo }; if (this.isServer) this._relayToTarget(data); else this._sendRaw(data); }
 
     getDataValue(args) { return this.receivedData[args.KEY] || ''; }
     
-    // --- NOUVELLE LOGIQUE D'ÉVÉNEMENTS ANTI-CLIGNOTEMENT ---
-
     whenMessageReceived() {
-      if (this._pendingEvents.message) {
-        this._pendingEvents.message = false; // On consomme l'événement immédiatement
-        return true;
-      }
+      if (!this._ready) return false;
+      if (this._pendingEvents.message) { this._pendingEvents.message = false; return true; }
       return false;
     }
 
     whenPlayerConnects() {
-      if (this._pendingEvents.join) {
-        this._pendingEvents.join = false; // On consomme l'événement
-        return true;
-      }
+      if (!this._ready) return false;
+      if (this._pendingEvents.join) { this._pendingEvents.join = false; return true; }
       return false;
     }
 
     whenPlayerDisconnects() {
-      if (this._pendingEvents.leave) {
-        this._pendingEvents.leave = false; // On consomme l'événement
-        return true;
-      }
+      if (!this._ready) return false;
+      if (this._pendingEvents.leave) { this._pendingEvents.leave = false; return true; }
       return false;
     }
 
