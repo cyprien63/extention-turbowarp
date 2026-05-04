@@ -39,9 +39,10 @@
       this.lastError = 'Aucune';
       this.lastServerID = '';
       
-      this._receivedThisTick = false;
-      this._playerConnectedThisTick = false;
-      this._playerDisconnectedThisTick = false;
+      this.messageId = 0;
+      this.joinId = 0;
+      this.leaveId = 0;
+
       this.lastJoinedPlayer = '';
       this.lastLeftPlayer = '';
       this.receivedData = {};
@@ -334,7 +335,7 @@
           conn.pseudo = incomingPseudo;
           if (data.type === 'init') {
             this.lastJoinedPlayer = conn.pseudo;
-            this._playerConnectedThisTick = true;
+            this.joinId++;
             Scratch.vm.runtime.startHats('localserverp2p_whenPlayerConnects');
             if (this.isServer) this._syncPlayers();
           } else if (this.isServer) this._syncPlayers();
@@ -347,7 +348,7 @@
           this.lastMessage = data.message || '';
           this.lastSender = data.pseudo;
           if (data.key) this.receivedData[data.key] = data.value;
-          this._receivedThisTick = true;
+          this.messageId++;
           Scratch.vm.runtime.startHats('localserverp2p_whenMessageReceived');
           if (this.isServer && !target) this._relay(data, conn.peer);
         }
@@ -355,7 +356,7 @@
       conn.on('close', () => {
         this.lastLeftPlayer = conn.pseudo || conn.peer;
         this.connections = this.connections.filter(c => c !== conn);
-        this._playerDisconnectedThisTick = true;
+        this.leaveId++;
         Scratch.vm.runtime.startHats('localserverp2p_whenPlayerDisconnects');
         if (this.isServer) this._syncPlayers();
       });
@@ -437,9 +438,42 @@
 
     getDataValue(args) { return this.receivedData[args.KEY] || ''; }
     getLastError() { return this.lastError; }
-    whenMessageReceived() { if (this._receivedThisTick) { this._receivedThisTick = false; return true; } return false; }
-    whenPlayerConnects() { if (this._playerConnectedThisTick) { this._playerConnectedThisTick = false; return true; } return false; }
-    whenPlayerDisconnects() { if (this._playerDisconnectedThisTick) { this._playerDisconnectedThisTick = false; return true; } return false; }
+    
+    whenMessageReceived(args, util) {
+      if (typeof util.thread.lastMsgId === 'undefined') {
+        util.thread.lastMsgId = this.messageId;
+        return this.messageId > 0;
+      }
+      if (util.thread.lastMsgId !== this.messageId) {
+        util.thread.lastMsgId = this.messageId;
+        return true;
+      }
+      return false;
+    }
+    
+    whenPlayerConnects(args, util) {
+      if (typeof util.thread.lastJoinId === 'undefined') {
+        util.thread.lastJoinId = this.joinId;
+        return this.joinId > 0;
+      }
+      if (util.thread.lastJoinId !== this.joinId) {
+        util.thread.lastJoinId = this.joinId;
+        return true;
+      }
+      return false;
+    }
+    
+    whenPlayerDisconnects(args, util) {
+      if (typeof util.thread.lastLeaveId === 'undefined') {
+        util.thread.lastLeaveId = this.leaveId;
+        return this.leaveId > 0;
+      }
+      if (util.thread.lastLeaveId !== this.leaveId) {
+        util.thread.lastLeaveId = this.leaveId;
+        return true;
+      }
+      return false;
+    }
 
     getLastMessage() { return this.lastMessage; }
     getLastSender() { return this.lastSender; }
