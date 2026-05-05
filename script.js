@@ -18,7 +18,7 @@ async function loadExtensions() {
                 <p>${ext.description}</p>
                 <div class="card-actions">
                     <a href="${ext.path}" class="btn btn-primary" download>Télécharger</a>
-                    <button class="btn btn-secondary" onclick="copyLink('${ext.path}')">Copier le lien</button>
+                    ${ext.onlyDownload ? '' : `<button class="btn btn-secondary" onclick="copyLink('${ext.path}')">Copier le lien</button>`}
                 </div>
             `;
             grid.appendChild(card);

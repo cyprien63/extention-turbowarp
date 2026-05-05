@@ -45,6 +45,7 @@
     "id": "serveur-local",
     "name": "Serveur Local P2P",
     "icon": "🌐",
+    "onlyDownload": true,
     "description": "Communiquez en Peer-to-Peer via WebRTC. Permet de créer des jeux multijoueurs sans serveur central lourd.",
     "path": "serveur-local/extension.js",
     "updates": [
